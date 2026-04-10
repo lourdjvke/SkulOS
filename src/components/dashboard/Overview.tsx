@@ -2,7 +2,7 @@ import { UserProfile, FileItem } from "@/src/types";
 import { db } from "@/src/lib/firebase";
 import { ref, onValue } from "firebase/database";
 import { useState, useEffect } from "react";
-import { Users, FileText, FolderOpen, TrendingUp, Calendar, Zap } from "lucide-react";
+import { Users, FileText, FolderOpen, TrendingUp } from "lucide-react";
 import { ILLUSTRATIONS } from "@/src/lib/illustrations";
 import { motion } from "motion/react";
 import { cn } from "@/src/lib/utils";
@@ -130,41 +130,15 @@ export default function Overview({ profile }: { profile: UserProfile }) {
             </div>
 
             {/* Secondary Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
               <StatCard title="Staff Files" value={stats.staffFiles} icon={FileText} color="sky" />
               <StatCard title="My Workspace" value={stats.ownFiles} icon={FolderOpen} color="sage" />
-              <StatCard title="System Load" value="Optimal" icon={Zap} color="amber" />
-              <StatCard title="Next Sync" value="Real-time" icon={Calendar} color="rose" />
             </div>
-
-            {/* Bottom Illustration Card */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-neutral-50 rounded-3xl p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 md:gap-12 overflow-hidden relative group"
-            >
-              <div className="flex-1 relative z-10">
-                <h3 className="text-2xl md:text-3xl font-semibold mb-4">Workspace Insights</h3>
-                <p className="text-neutral-500 text-sm md:text-base leading-relaxed max-w-lg">
-                  Your school's data is the foundation of a better learning environment. Track progress, manage resources, and streamline your daily administrative tasks in one central place.
-                </p>
-              </div>
-              <div className="w-full md:w-1/3 relative z-10">
-                <img 
-                  src={ILLUSTRATIONS.snack} 
-                  alt="Snack" 
-                  className="w-full max-w-[200px] md:max-w-none mx-auto hover:scale-105 transition-transform duration-500"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-            </motion.div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             <StatCard title="My Files" value={stats.ownFiles} icon={FolderOpen} color="sky" />
             <StatCard title="Recent Actions" value={stats.totalActivity} icon={TrendingUp} color="sage" />
-            <StatCard title="Weekly Goal" value="On Track" icon={Zap} color="amber" />
           </div>
         )}
       </div>
