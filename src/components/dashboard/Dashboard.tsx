@@ -229,6 +229,7 @@ export default function Dashboard({ profile }: { profile: UserProfile }) {
                   setCurrentFolderId(id);
                   if (window.innerWidth < 768) setIsCopilotOpen(false);
                 }}
+                onOpenSettings={() => setActiveTab("settings")}
               />
             </motion.aside>
           </>

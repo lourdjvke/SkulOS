@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { UserProfile, FileItem, FileType } from "@/src/types";
 import { GoogleGenAI, LiveServerMessage, Modality, FunctionDeclaration, Type } from "@google/genai";
 import { db } from "@/src/lib/firebase";
 import { ref, push, set, get, update } from "firebase/database";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, BrainCircuit, User, Bot, Loader2, Square, Mic, Check, X, MicOff } from "lucide-react";
+import { Send, BrainCircuit, User, Bot, Loader2, Square, Mic, Check, X, MicOff, Key, ExternalLink } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import Markdown from "react-markdown";
 import { ILLUSTRATIONS } from "@/src/lib/illustrations";
@@ -17,7 +17,21 @@ interface Message {
   targetId?: string;
 }
 
-export default function AICopilot({ profile, currentPath, currentFolderId, selectedStaffId, onNavigate }: { profile: UserProfile; currentPath: string[]; currentFolderId: string | null; selectedStaffId?: string | null; onNavigate?: (folderId: string) => void }) {
+export default function AICopilot({ 
+  profile, 
+  currentPath, 
+  currentFolderId, 
+  selectedStaffId, 
+  onNavigate,
+  onOpenSettings
+}: { 
+  profile: UserProfile; 
+  currentPath: string[]; 
+  currentFolderId: string | null; 
+  selectedStaffId?: string | null; 
+  onNavigate?: (folderId: string) => void;
+  onOpenSettings?: () => void;
+}) {
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: "Hello! I'm your School Data Copilot. I can help you build structures or query your school's data. What can I do for you today?" }
   ]);
@@ -42,7 +56,18 @@ export default function AICopilot({ profile, currentPath, currentFolderId, selec
   const randomizeModels = localStorage.getItem("randomize_models") === "true";
 
   const apiKey = useCustomApi && customApiKey ? customApiKey : process.env.GEMINI_API_KEY;
-  const ai = new GoogleGenAI({ apiKey } as any);
+  
+  const ai = useMemo(() => {
+    if (!apiKey) return null;
+    try {
+      return new GoogleGenAI({ apiKey } as any);
+    } catch (e) {
+      console.error("AI Init Error:", e);
+      return null;
+    }
+  }, [apiKey]);
+
+  const hasApiKey = !!ai;
 
   const models = ["gemini-2.5-flash", "gemini-3-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"];
   
@@ -97,6 +122,7 @@ export default function AICopilot({ profile, currentPath, currentFolderId, selec
   };
 
   const startLiveSession = async () => {
+    if (!ai) return;
     setIsLiveConnecting(true);
     try {
       // Fetch context
@@ -264,6 +290,7 @@ Context: ${JSON.stringify(context)}`,
   };
 
   const processMessage = async (userMessage: string) => {
+    if (!ai) return;
     setIsLoading(true);
     abortControllerRef.current = new AbortController();
 
@@ -576,7 +603,46 @@ Context: ${JSON.stringify(context)}`,
         )}
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 relative">
+        <AnimatePresence>
+          {!hasApiKey && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-50 bg-white/80 backdrop-blur-md flex items-center justify-center p-8 text-center"
+            >
+              <div className="flex flex-col items-center gap-6 max-w-xs">
+                <div className="w-16 h-16 bg-neutral-100 rounded-2xl flex items-center justify-center">
+                  <Key className="w-8 h-8 text-neutral-400" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <h3 className="font-bold text-lg">API Key Required</h3>
+                  <p className="text-sm text-neutral-500 leading-relaxed">
+                    SkulOS uses **BYOK** (Bring Your Own Key) to remain free for everyone. Please add your Gemini API key in settings to enable the Copilot.
+                  </p>
+                </div>
+                <div className="flex flex-col w-full gap-3">
+                  <button
+                    onClick={onOpenSettings}
+                    className="w-full py-3 bg-black text-white rounded-xl text-sm font-bold hover:bg-neutral-800 transition-all flex items-center justify-center gap-2"
+                  >
+                    Go to Settings <ExternalLink className="w-4 h-4" />
+                  </button>
+                  <a 
+                    href="https://aistudio.google.com/app/apikey" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs font-bold text-neutral-400 hover:text-black transition-colors"
+                  >
+                    Get a free API key here
+                  </a>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {messages.map((msg, i) => (
           <motion.div
             key={i}
