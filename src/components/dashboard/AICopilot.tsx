@@ -349,8 +349,14 @@ Context: ${JSON.stringify(context)}`,
       };
 
       // 2. Call Gemini with retry logic
-      const response = await (ai as any).models.generateContent({
-        model: modelToUse,
+      let response;
+      const modelsToTry = randomizeModels ? [...models].sort(() => Math.random() - 0.5) : [...models];
+      let success = false;
+      
+      for (let i = 0; i < Math.min(modelsToTry.length, 3); i++) {
+        try {
+          response = await (ai as any).models.generateContent({
+            model: modelsToTry[i],
         contents: [
           {
             role: "user",
@@ -394,8 +400,16 @@ Context: ${JSON.stringify(context)}`,
           temperature: 0.7,
         }
       });
+      success = true;
+      break;
+    } catch (e) {
+      console.error(`Attempt ${i + 1} failed:`, e);
+    }
+  }
 
-      const aiResponse = response.text || "I'm sorry, I couldn't process that.";
+  if (!success) throw new Error("Copilot is having issues currently... Please try again later");
+
+  const aiResponse = response.text || "I'm sorry, I couldn't process that.";
       
       // 3. Handle actions if any
       try {
