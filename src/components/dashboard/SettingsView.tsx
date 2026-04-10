@@ -3,9 +3,10 @@ import { UserProfile, School } from "@/src/types";
 import { db, auth } from "@/src/lib/firebase";
 import { ref, update, get, remove, onValue } from "firebase/database";
 import { motion, AnimatePresence } from "motion/react";
-import { RefreshCw, UserMinus, Copy, Check, Trash2, ShieldAlert, Link as LinkIcon, LogOut } from "lucide-react";
+import { RefreshCw, UserMinus, Copy, Check, Trash2, ShieldAlert, Link as LinkIcon, LogOut, ChevronDown, ChevronUp } from "lucide-react";
 import Button from "@/src/components/ui/Button";
 import { cn } from "@/src/lib/utils";
+import ActivityGraph from "./ActivityGraph";
 
 export default function SettingsView({ profile, school }: { profile: UserProfile; school: School | null }) {
   const [staff, setStaff] = useState<UserProfile[]>([]);
@@ -172,26 +173,36 @@ export default function SettingsView({ profile, school }: { profile: UserProfile
                     <div 
                       key={member.uid} 
                       className={cn(
-                        "p-4 flex items-center justify-between hover:bg-neutral-100 transition-colors",
+                        "flex flex-col hover:bg-neutral-100/50 transition-colors",
                         index !== staff.length - 1 && "border-b border-neutral-100"
                       )}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-medium text-sm">
-                          {member.name?.charAt(0)}
+                      <div className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-medium text-sm border border-neutral-100">
+                            {member.name?.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm">{member.name}</div>
+                            <div className="text-[10px] text-neutral-400 uppercase tracking-wider">{member.subject}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-medium text-sm">{member.name}</div>
-                          <div className="text-[10px] text-neutral-400 uppercase tracking-wider">{member.subject}</div>
-                        </div>
+                        <button 
+                          onClick={() => setShowConfirmRemove(member.uid)}
+                          className="p-2 text-neutral-400 hover:text-red-500 transition-colors"
+                          title="Remove Staff"
+                        >
+                          <UserMinus className="w-4 h-4" />
+                        </button>
                       </div>
-                      <button 
-                        onClick={() => setShowConfirmRemove(member.uid)}
-                        className="p-2 text-neutral-400 hover:text-red-500 transition-colors"
-                        title="Remove Staff"
-                      >
-                        <UserMinus className="w-4 h-4" />
-                      </button>
+                      <div className="px-4 pb-4">
+                        <ActivityGraph 
+                          userId={member.uid} 
+                          schoolId={profile.schoolId!} 
+                          defaultFolded={true} 
+                          title={`${member.name}'s Activity`}
+                        />
+                      </div>
                     </div>
                   ))
                 )}
@@ -203,9 +214,13 @@ export default function SettingsView({ profile, school }: { profile: UserProfile
             {/* Staff Settings */}
             <section className="flex flex-col gap-6">
               <div className="flex flex-col gap-1">
-                <h3 className="text-lg font-medium">Account Actions</h3>
-                <p className="text-sm text-neutral-500">Manage your connection to the school.</p>
+                <h3 className="text-lg font-medium">Your Activity</h3>
+                <p className="text-sm text-neutral-500">Track your contributions to the school workspace.</p>
               </div>
+              <ActivityGraph userId={profile.uid} schoolId={profile.schoolId!} />
+            </section>
+
+            <section className="flex flex-col gap-6">
 
               <div className="p-6 bg-neutral-50 rounded-3xl flex flex-col gap-4">
                 <div className="flex flex-col gap-2">

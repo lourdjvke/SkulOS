@@ -23,6 +23,24 @@ export interface School {
 
 export type FileType = "folder" | "table" | "text";
 
+export interface FileVersion {
+  id: string;
+  content: any;
+  updatedAt: number;
+  updatedBy: string;
+  userName: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  userId: string;
+  userName: string;
+  action: string;
+  targetName: string;
+  targetType: string;
+  timestamp: number;
+}
+
 export interface FileItem {
   id: string;
   name: string;
@@ -35,6 +53,13 @@ export interface FileItem {
   content?: any; // For text files (string) or table files (rows/cols)
   createdAt: number;
   updatedAt: number;
+  versions?: FileVersion[];
+}
+
+export interface FileLock {
+  userId: string;
+  userName: string;
+  timestamp: number;
 }
 
 export interface TableContent {

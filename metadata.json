@@ -1,5 +1,5 @@
 {
-  "name": "School Data OS",
-  "description": "A premium school data management platform with AI-powered insights and a Notion-inspired interface.",
+  "name": "SkulOS",
+  "description": "The All-in-One School Management & Collaboration OS with AI-powered insights and real-time activity tracking.",
   "requestFramePermissions": ["microphone"]
 }

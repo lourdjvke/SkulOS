@@ -111,7 +111,13 @@ export default function Dashboard({ profile }: { profile: UserProfile }) {
               exit={{ opacity: 0, x: -10 }}
               className="h-full"
             >
-              <StaffView profile={profile} onPathChange={setCurrentPath} onSelectStaff={setSelectedStaffId} />
+              <StaffView 
+                profile={profile} 
+                onPathChange={setCurrentPath} 
+                onSelectStaff={setSelectedStaffId}
+                currentFolderId={currentFolderId}
+                setCurrentFolderId={setCurrentFolderId}
+              />
             </motion.div>
           ) : activeTab === "folders" ? (
             <motion.div

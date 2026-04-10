@@ -7,11 +7,10 @@ import { ChevronRight, Clock, FileText, LayoutGrid, List } from "lucide-react";
 import Workspace from "./Workspace";
 import { ILLUSTRATIONS } from "@/src/lib/illustrations";
 
-export default function StaffView({ profile, onPathChange, onSelectStaff }: { profile: UserProfile; onPathChange: (path: string[]) => void, onSelectStaff?: (staffId: string | null) => void }) {
+export default function StaffView({ profile, onPathChange, onSelectStaff, currentFolderId, setCurrentFolderId }: { profile: UserProfile; onPathChange: (path: string[]) => void, onSelectStaff?: (staffId: string | null) => void, currentFolderId: string | null, setCurrentFolderId: (id: string | null) => void }) {
   const [staff, setStaff] = useState<UserProfile[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<UserProfile | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
 
   useEffect(() => {
     if (onSelectStaff) onSelectStaff(selectedStaff ? selectedStaff.uid : null);

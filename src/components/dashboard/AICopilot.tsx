@@ -46,62 +46,6 @@ export default function AICopilot({ profile, currentPath, currentFolderId, selec
 
   const models = ["gemini-2.5-flash", "gemini-3-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"];
   
-  const callGeminiWithRetry = async (ai: any, models: string[], randomizeModels: boolean, context: any, userMessage: string) => {
-    const modelsToTry = randomizeModels ? [...models].sort(() => Math.random() - 0.5) : [...models];
-    for (let i = 0; i < Math.min(modelsToTry.length, 3); i++) {
-      try {
-        return await (ai as any).models.generateContent({
-          model: modelsToTry[i],
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: `
-                Context: ${JSON.stringify(context)}
-                User Request: ${userMessage}
-                
-                You are a School Data Copilot. You can:
-                1. Answer questions about the school data.
-                2. Build structures (folders, tables, files).
-                3. Add color tags to files.
-                4. Move files.
-                5. Edit text files.
-                
-                If the user asks about a specific teacher, use the \`allStaff\` data in the context to provide information.
-                If a \`selectedStaffId\` is provided, focus your answers on that teacher's folders and files (by filtering \`availableFiles\` by \`ownerId === selectedStaffId\`).
-                
-                If the user wants to build something, return a JSON object in your response like this:
-                { "action": "build", "items": [{ "type": "folder" | "table" | "text", "name": "Name", "parentId": "current" | "id_of_parent", "id": "temp_id_for_nesting", "columns": ["Col1", "Col2"], "rows": [{ "Col1": "Value1", "Col2": "Value2" }], "content": "Text content for text files" }] }
-                
-                If the user wants to add a color tag to files, return:
-                { "action": "addTag", "fileIds": ["id1", "id2"], "tag": "red" }
-                
-                If the user wants to move a file, return:
-                { "action": "moveFile", "fileId": "id", "newParentId": "new_parent_id" }
-                
-                If the user wants to edit a text file, return:
-                { "action": "proposeEdit", "fileId": "id", "newContent": "The new content of the file" }
-                
-                If the user asks to create a table from data in a file, look for the data in the provided context, extract it, and include it in the "rows" array.
-                
-                For example, to create a folder and a table inside it with pre-filled data:
-                { "action": "build", "items": [{ "type": "folder", "name": "My Folder", "id": "f1", "parentId": "current" }, { "type": "table", "name": "My Table", "parentId": "f1", "columns": ["Name", "Score"], "rows": [{ "Name": "John", "Score": "90" }] }] }
-                
-                Otherwise, just respond with helpful text. Use Markdown for formatting (bold, italics, lists, etc.).
-                Keep responses clean, professional, and concise.
-              ` }]
-            }
-          ],
-          config: {
-            temperature: 0.7,
-          }
-        });
-      } catch (e) {
-        console.error(`Attempt ${i + 1} failed:`, e);
-      }
-    }
-    throw new Error("Copilot is having issues currently... Please try again later");
-  };
-  
   // Use the requested models, randomizing if enabled
   const modelToUse = randomizeModels 
     ? models[Math.floor(Math.random() * models.length)] 
@@ -158,10 +102,16 @@ export default function AICopilot({ profile, currentPath, currentFolderId, selec
       // Fetch context
       const filesRef = ref(db, `files/${profile.schoolId}`);
       const usersRef = ref(db, `users`);
-      const [filesSnapshot, usersSnapshot] = await Promise.all([get(filesRef), get(usersRef)]);
+      const activityRef = ref(db, `activity/${profile.schoolId}`);
+      const [filesSnapshot, usersSnapshot, activitySnapshot] = await Promise.all([
+        get(filesRef), 
+        get(usersRef),
+        get(activityRef)
+      ]);
       
       const allFiles = filesSnapshot.exists() ? Object.values(filesSnapshot.val()) as FileItem[] : [];
       const allUsers = usersSnapshot.exists() ? Object.values(usersSnapshot.val()) as UserProfile[] : [];
+      const allActivity = activitySnapshot.exists() ? activitySnapshot.val() : {};
       
       const isOwner = profile.role === 'owner';
       
@@ -176,14 +126,16 @@ export default function AICopilot({ profile, currentPath, currentFolderId, selec
           type: f.type, 
           path: f.parentId || "root",
           content: f.content,
-          ownerId: f.ownerId
+          ownerId: f.ownerId,
+          versionsCount: f.versions?.length || 0
         })),
         allStaff: isOwner ? allUsers.filter(u => u.schoolId === profile.schoolId && u.role === "staff").map(u => ({
           name: u.name,
           uid: u.uid,
           subject: u.subject,
           lastDataLog: u.lastDataLog,
-          totalLogsThisWeek: u.totalLogsThisWeek
+          totalLogsThisWeek: u.totalLogsThisWeek,
+          recentActivity: allActivity[u.uid] ? Object.values(allActivity[u.uid]).slice(-10) : []
         })) : []
       };
 
@@ -319,10 +271,16 @@ Context: ${JSON.stringify(context)}`,
       // 1. Fetch relevant data context
       const filesRef = ref(db, `files/${profile.schoolId}`);
       const usersRef = ref(db, `users`);
-      const [filesSnapshot, usersSnapshot] = await Promise.all([get(filesRef), get(usersRef)]);
+      const activityRef = ref(db, `activity/${profile.schoolId}`);
+      const [filesSnapshot, usersSnapshot, activitySnapshot] = await Promise.all([
+        get(filesRef), 
+        get(usersRef),
+        get(activityRef)
+      ]);
       
       const allFiles = filesSnapshot.exists() ? Object.values(filesSnapshot.val()) as FileItem[] : [];
       const allUsers = usersSnapshot.exists() ? Object.values(usersSnapshot.val()) as UserProfile[] : [];
+      const allActivity = activitySnapshot.exists() ? activitySnapshot.val() : {};
       
       const isOwner = profile.role === 'owner';
       
@@ -337,14 +295,16 @@ Context: ${JSON.stringify(context)}`,
           type: f.type, 
           path: f.parentId || "root",
           content: f.content,
-          ownerId: f.ownerId
+          ownerId: f.ownerId,
+          versionsCount: f.versions?.length || 0
         })),
         allStaff: isOwner ? allUsers.filter(u => u.schoolId === profile.schoolId && u.role === "staff").map(u => ({
           name: u.name,
           uid: u.uid,
           subject: u.subject,
           lastDataLog: u.lastDataLog,
-          totalLogsThisWeek: u.totalLogsThisWeek
+          totalLogsThisWeek: u.totalLogsThisWeek,
+          recentActivity: allActivity[u.uid] ? Object.values(allActivity[u.uid]).slice(-10) : []
         })) : []
       };
 
@@ -375,7 +335,7 @@ Context: ${JSON.stringify(context)}`,
               If a \`selectedStaffId\` is provided, focus your answers on that teacher's folders and files (by filtering \`availableFiles\` by \`ownerId === selectedStaffId\`).
               
               If the user wants to build something, return a JSON object in your response like this:
-              { "action": "build", "items": [{ "type": "folder" | "table" | "text", "name": "Name", "parentId": "current" | "id_of_parent", "id": "temp_id_for_nesting", "columns": ["Col1", "Col2"], "rows": [{ "Col1": "Value1", "Col2": "Value2" }], "content": "Text content for text files" }] }
+              { "action": "build", "items": [{ "type": "folder" | "table" | "text", "name": "Name", "parentId": "current" | "root" | "id_of_parent", "id": "temp_id_for_nesting", "columns": ["Col1", "Col2"], "rows": [{ "Col1": "Value1", "Col2": "Value2" }], "content": "Text content for text files" }] }
               
               If the user wants to add a color tag to files, return:
               { "action": "addTag", "fileIds": ["id1", "id2"], "tag": "red" }
@@ -421,7 +381,9 @@ Context: ${JSON.stringify(context)}`,
             let lastCreatedId = null;
             for (const item of actionData.items) {
               let pId = currentFolderId;
-              if (item.parentId && item.parentId !== "current") {
+              if (item.parentId === "root") {
+                pId = null;
+              } else if (item.parentId && item.parentId !== "current") {
                 pId = idMap[item.parentId] || item.parentId;
               }
               const newId = await createItem(item.type, item.name, pId, item.columns, item.rows, item.content);
@@ -501,7 +463,7 @@ Context: ${JSON.stringify(context)}`,
       name,
       type,
       parentId, 
-      ownerId: profile.uid,
+      ownerId: selectedStaffId || profile.uid,
       schoolId: profile.schoolId!,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -517,6 +479,13 @@ Context: ${JSON.stringify(context)}`,
     };
 
     await set(newFileRef, newFile);
+
+    // Update user's last log
+    await update(ref(db, `users/${profile.uid}`), {
+      lastDataLog: Date.now(),
+      totalLogsThisWeek: (profile.totalLogsThisWeek || 0) + 1
+    });
+
     return id;
   };
 

@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { UserProfile, FileItem, FileType, ACCENT_COLORS } from "@/src/types";
+import { UserProfile, FileItem, FileType, ACCENT_COLORS, FileLock } from "@/src/types";
 import { db } from "@/src/lib/firebase";
-import { ref, onValue, push, set, update, remove } from "firebase/database";
-import { Folder, FileText, Table as TableIcon, Plus, ChevronRight, MoreVertical, Search, Tag as TagIcon, Users } from "lucide-react";
+import { ref, onValue, push, set, update, remove, get } from "firebase/database";
+import { Folder, FileText, Table as TableIcon, Plus, ChevronRight, MoreVertical, Search, Tag as TagIcon, Users, Lock } from "lucide-react";
 import { motion, AnimatePresence, useDragControls } from "motion/react";
 import { cn } from "@/src/lib/utils";
 import ContextMenu from "@/src/components/ui/ContextMenu";
@@ -21,6 +21,7 @@ interface WorkspaceProps {
 
 export default function Workspace({ profile, onPathChange, viewingStaffId, currentFolderId, setCurrentFolderId }: WorkspaceProps) {
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [locks, setLocks] = useState<Record<string, FileLock>>({});
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -48,6 +49,15 @@ export default function Workspace({ profile, onPathChange, viewingStaffId, curre
     });
     return () => unsubscribe();
   }, [profile.schoolId, targetUserId]);
+
+  useEffect(() => {
+    const locksRef = ref(db, `locks/${profile.schoolId}`);
+    const unsubscribe = onValue(locksRef, (snapshot) => {
+      const data = snapshot.val();
+      setLocks(data || {});
+    });
+    return () => unsubscribe();
+  }, [profile.schoolId]);
 
   useEffect(() => {
     // Update breadcrumbs
@@ -343,7 +353,15 @@ export default function Workspace({ profile, onPathChange, viewingStaffId, curre
                 <FileCard
                   key={file.id}
                   file={file}
-                  onClick={() => file.type === "folder" ? setCurrentFolderId(file.id) : setSelectedFile(file)}
+                  lock={locks[file.id]}
+                  onClick={() => {
+                    const lock = locks[file.id];
+                    if (lock && lock.userId !== profile.uid && (Date.now() - lock.timestamp < 30000)) {
+                      alert(`${lock.userName} is currently editing this file.`);
+                      return;
+                    }
+                    file.type === "folder" ? setCurrentFolderId(file.id) : setSelectedFile(file);
+                  }}
                   onDelete={() => setDeleteModalState({ isOpen: true, fileId: file.id })}
                   onRename={() => setRenameModalState({ isOpen: true, fileId: file.id, currentName: file.name })}
                   onDuplicate={() => duplicateItem(file)}
@@ -370,10 +388,11 @@ export default function Workspace({ profile, onPathChange, viewingStaffId, curre
   );
 }
 
-function FileCard({ file, onClick, onDelete, onRename, onDuplicate, onUpdateTags, onShare, onExport }: { file: FileItem; onClick: () => void; onDelete: () => void; onRename: () => void; onDuplicate: () => void; onUpdateTags: (tags: string[]) => void; onShare: () => void; onExport: () => void; key?: any }) {
+function FileCard({ file, lock, onClick, onDelete, onRename, onDuplicate, onUpdateTags, onShare, onExport }: { file: FileItem; lock?: FileLock; onClick: () => void; onDelete: () => void; onRename: () => void; onDuplicate: () => void; onUpdateTags: (tags: string[]) => void; onShare: () => void; onExport: () => void; key?: any }) {
   const [showTags, setShowTags] = useState(false);
   const controls = useDragControls();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isLocked = lock && (Date.now() - lock.timestamp < 30000);
 
   const startDrag = (e: React.PointerEvent) => {
     timeoutRef.current = setTimeout(() => {
@@ -422,6 +441,13 @@ function FileCard({ file, onClick, onDelete, onRename, onDuplicate, onUpdateTags
           )} style={{ backgroundColor: file.tags && file.tags.length > 0 ? ACCENT_COLORS.find(c => c.name === file.tags[0])?.value : (file.type === "folder" ? undefined : "#000") }}>
             {file.type === "folder" ? <Folder className="w-6 h-6" /> : file.type === "table" ? <TableIcon className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
           </div>
+          
+          {isLocked && (
+            <div className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+              <Lock className="w-3 h-3" />
+              {lock.userName}
+            </div>
+          )}
           
           <div className="flex gap-1">
             {file.tags?.map((tag) => {
