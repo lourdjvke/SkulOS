@@ -1,0 +1,5 @@
+{
+  "name": "School Data OS",
+  "description": "A premium school data management platform with AI-powered insights and a Notion-inspired interface.",
+  "requestFramePermissions": ["microphone"]
+}
