@@ -45,7 +45,67 @@ export default function AICopilot({ profile, currentPath, currentFolderId, selec
   const ai = new GoogleGenAI({ apiKey } as any);
 
   const models = ["gemini-2.5-flash", "gemini-3-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"];
-  const selectedModel = randomizeModels ? models[Math.floor(Math.random() * models.length)] : "gemini-3-flash-preview";
+  
+  const callGeminiWithRetry = async (ai: any, models: string[], randomizeModels: boolean, context: any, userMessage: string) => {
+    const modelsToTry = randomizeModels ? [...models].sort(() => Math.random() - 0.5) : [...models];
+    for (let i = 0; i < Math.min(modelsToTry.length, 3); i++) {
+      try {
+        return await (ai as any).models.generateContent({
+          model: modelsToTry[i],
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: `
+                Context: ${JSON.stringify(context)}
+                User Request: ${userMessage}
+                
+                You are a School Data Copilot. You can:
+                1. Answer questions about the school data.
+                2. Build structures (folders, tables, files).
+                3. Add color tags to files.
+                4. Move files.
+                5. Edit text files.
+                
+                If the user asks about a specific teacher, use the \`allStaff\` data in the context to provide information.
+                If a \`selectedStaffId\` is provided, focus your answers on that teacher's folders and files (by filtering \`availableFiles\` by \`ownerId === selectedStaffId\`).
+                
+                If the user wants to build something, return a JSON object in your response like this:
+                { "action": "build", "items": [{ "type": "folder" | "table" | "text", "name": "Name", "parentId": "current" | "id_of_parent", "id": "temp_id_for_nesting", "columns": ["Col1", "Col2"], "rows": [{ "Col1": "Value1", "Col2": "Value2" }], "content": "Text content for text files" }] }
+                
+                If the user wants to add a color tag to files, return:
+                { "action": "addTag", "fileIds": ["id1", "id2"], "tag": "red" }
+                
+                If the user wants to move a file, return:
+                { "action": "moveFile", "fileId": "id", "newParentId": "new_parent_id" }
+                
+                If the user wants to edit a text file, return:
+                { "action": "proposeEdit", "fileId": "id", "newContent": "The new content of the file" }
+                
+                If the user asks to create a table from data in a file, look for the data in the provided context, extract it, and include it in the "rows" array.
+                
+                For example, to create a folder and a table inside it with pre-filled data:
+                { "action": "build", "items": [{ "type": "folder", "name": "My Folder", "id": "f1", "parentId": "current" }, { "type": "table", "name": "My Table", "parentId": "f1", "columns": ["Name", "Score"], "rows": [{ "Name": "John", "Score": "90" }] }] }
+                
+                Otherwise, just respond with helpful text. Use Markdown for formatting (bold, italics, lists, etc.).
+                Keep responses clean, professional, and concise.
+              ` }]
+            }
+          ],
+          config: {
+            temperature: 0.7,
+          }
+        });
+      } catch (e) {
+        console.error(`Attempt ${i + 1} failed:`, e);
+      }
+    }
+    throw new Error("Copilot is having issues currently... Please try again later");
+  };
+  
+  // Use the requested models, randomizing if enabled
+  const modelToUse = randomizeModels 
+    ? models[Math.floor(Math.random() * models.length)] 
+    : models[0]; // Default to the first model in the list
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -288,9 +348,9 @@ Context: ${JSON.stringify(context)}`,
         })) : []
       };
 
-      // 2. Call Gemini
+      // 2. Call Gemini with retry logic
       const response = await (ai as any).models.generateContent({
-        model: selectedModel,
+        model: modelToUse,
         contents: [
           {
             role: "user",
@@ -461,7 +521,7 @@ Context: ${JSON.stringify(context)}`,
           </div>
           <div>
             <h2 className="font-bold text-sm">AI Copilot</h2>
-            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Context Aware</p>
+            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider" style={{ color: useCustomApi && customApiKey ? '#22c55e' : undefined }}>Context Aware</p>
           </div>
         </div>
         {queue.length > 0 && (

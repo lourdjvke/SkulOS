@@ -110,7 +110,7 @@ export default function SettingsView({ profile, school }: { profile: UserProfile
         <p className="text-sm text-neutral-400 mt-1">Manage your account and preferences.</p>
       </header>
 
-      <div className="p-8 flex flex-col gap-12 max-w-4xl">
+      <div className="p-8 pb-24 flex flex-col gap-12 max-w-4xl">
         {profile.role === "owner" ? (
           <>
             {/* Invite Section */}

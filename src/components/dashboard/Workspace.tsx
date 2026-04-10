@@ -298,7 +298,7 @@ export default function Workspace({ profile, onPathChange, viewingStaffId, curre
           { label: "New Document", icon: <FileText className="w-4 h-4" />, onClick: () => setCreateModalState({ isOpen: true, type: "text" }) },
         ]}
       >
-        <div className="p-8 min-h-full">
+        <div className="p-8 pb-24 min-h-full">
           <PromptModal
             isOpen={createModalState.isOpen}
             title={`New ${createModalState.type === "folder" ? "Folder" : createModalState.type === "table" ? "Table" : "Document"}`}
