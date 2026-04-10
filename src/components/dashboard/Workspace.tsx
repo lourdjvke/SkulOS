@@ -95,6 +95,20 @@ export default function Workspace({ profile, onPathChange, viewingStaffId, curre
       };
 
       await set(newFileRef, newFile);
+      
+      // Log activity
+      const activityRef = ref(db, `activity/${profile.schoolId}/${profile.uid}`);
+      const newActivityRef = push(activityRef);
+      await set(newActivityRef, {
+        id: newActivityRef.key!,
+        userId: profile.uid,
+        userName: profile.name || "Anonymous",
+        action: "create",
+        targetName: name,
+        targetType: type,
+        timestamp: Date.now()
+      });
+
       setShowCreateMenu(false);
     } catch (err) {
       console.error("Error creating item:", err);
@@ -104,7 +118,23 @@ export default function Workspace({ profile, onPathChange, viewingStaffId, curre
   };
 
   const deleteItem = async (id: string) => {
+    const fileToDelete = files.find(f => f.id === id);
     await remove(ref(db, `files/${profile.schoolId}/${id}`));
+
+    if (fileToDelete) {
+      // Log activity
+      const activityRef = ref(db, `activity/${profile.schoolId}/${profile.uid}`);
+      const newActivityRef = push(activityRef);
+      await set(newActivityRef, {
+        id: newActivityRef.key!,
+        userId: profile.uid,
+        userName: profile.name || "Anonymous",
+        action: "delete",
+        targetName: fileToDelete.name,
+        targetType: fileToDelete.type,
+        timestamp: Date.now()
+      });
+    }
   };
 
   const shareItem = async (id: string, email: string) => {
@@ -166,7 +196,23 @@ export default function Workspace({ profile, onPathChange, viewingStaffId, curre
   };
 
   const renameItem = async (id: string, newName: string) => {
+    const file = files.find(f => f.id === id);
     await update(ref(db, `files/${profile.schoolId}/${id}`), { name: newName, updatedAt: Date.now() });
+
+    if (file) {
+      // Log activity
+      const activityRef = ref(db, `activity/${profile.schoolId}/${profile.uid}`);
+      const newActivityRef = push(activityRef);
+      await set(newActivityRef, {
+        id: newActivityRef.key!,
+        userId: profile.uid,
+        userName: profile.name || "Anonymous",
+        action: "rename",
+        targetName: `${file.name} to ${newName}`,
+        targetType: file.type,
+        timestamp: Date.now()
+      });
+    }
   };
 
   const filteredFiles = files

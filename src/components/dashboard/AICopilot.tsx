@@ -408,13 +408,44 @@ Context: ${JSON.stringify(context)}`,
                 const tags = file.tags || [];
                 if (!tags.includes(actionData.tag)) {
                   await update(fileRef, { tags: [...tags, actionData.tag] });
+                  
+                  // Log activity
+                  const activityRef = ref(db, `activity/${profile.schoolId}/${profile.uid}`);
+                  const newActivityRef = push(activityRef);
+                  await set(newActivityRef, {
+                    id: newActivityRef.key!,
+                    userId: profile.uid,
+                    userName: profile.name || "Anonymous",
+                    action: "tag",
+                    targetName: `${file.name} with ${actionData.tag}`,
+                    targetType: file.type,
+                    timestamp: Date.now()
+                  });
                 }
               }
             }
             setMessages(prev => [...prev, { role: "assistant", content: `I've added the tag '${actionData.tag}' to the requested files.` }]);
           } else if (actionData.action === "moveFile") {
             const fileRef = ref(db, `files/${profile.schoolId}/${actionData.fileId}`);
+            const snap = await get(fileRef);
             await update(fileRef, { parentId: actionData.newParentId === "root" ? null : actionData.newParentId });
+            
+            if (snap.exists()) {
+              const file = snap.val();
+              // Log activity
+              const activityRef = ref(db, `activity/${profile.schoolId}/${profile.uid}`);
+              const newActivityRef = push(activityRef);
+              await set(newActivityRef, {
+                id: newActivityRef.key!,
+                userId: profile.uid,
+                userName: profile.name || "Anonymous",
+                action: "move",
+                targetName: file.name,
+                targetType: file.type,
+                timestamp: Date.now()
+              });
+            }
+            
             setMessages(prev => [...prev, { role: "assistant", content: `I've moved the file.` }]);
           } else if (actionData.action === "proposeEdit") {
             const fileRef = ref(db, `files/${profile.schoolId}/${actionData.fileId}`);
@@ -480,6 +511,19 @@ Context: ${JSON.stringify(context)}`,
 
     await set(newFileRef, newFile);
 
+    // Log activity
+    const activityRef = ref(db, `activity/${profile.schoolId}/${profile.uid}`);
+    const newActivityRef = push(activityRef);
+    await set(newActivityRef, {
+      id: newActivityRef.key!,
+      userId: profile.uid,
+      userName: profile.name || "Anonymous",
+      action: "create",
+      targetName: name,
+      targetType: type,
+      timestamp: Date.now()
+    });
+
     // Update user's last log
     await update(ref(db, `users/${profile.uid}`), {
       lastDataLog: Date.now(),
@@ -491,7 +535,25 @@ Context: ${JSON.stringify(context)}`,
 
   const applyEdit = async (fileId: string, newContent: string) => {
     const fileRef = ref(db, `files/${profile.schoolId}/${fileId}`);
+    const snap = await get(fileRef);
     await update(fileRef, { content: newContent, updatedAt: Date.now() });
+    
+    if (snap.exists()) {
+      const file = snap.val();
+      // Log activity
+      const activityRef = ref(db, `activity/${profile.schoolId}/${profile.uid}`);
+      const newActivityRef = push(activityRef);
+      await set(newActivityRef, {
+        id: newActivityRef.key!,
+        userId: profile.uid,
+        userName: profile.name || "Anonymous",
+        action: "edit",
+        targetName: file.name,
+        targetType: file.type,
+        timestamp: Date.now()
+      });
+    }
+    
     setMessages(prev => [...prev, { role: "assistant", content: "Edit applied successfully!" }]);
   };
 
