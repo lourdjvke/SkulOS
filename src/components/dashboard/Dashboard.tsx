@@ -19,6 +19,7 @@ export default function Dashboard({ profile }: { profile: UserProfile }) {
   const [activeTab, setActiveTab] = useState<"overview" | "staff" | "folders" | "shared" | "settings">("overview");
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(typeof window !== "undefined" ? window.innerWidth >= 768 : true);
   const [currentPath, setCurrentPath] = useState<string[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
@@ -38,6 +39,14 @@ export default function Dashboard({ profile }: { profile: UserProfile }) {
     }
   }, [profile.schoolId]);
 
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const showCopilot = isCopilotOpen || (activeTab === "folders" && isDesktop);
+
   return (
     <div className="h-full flex bg-white relative overflow-hidden">
       {/* Desktop Sidebar */}
@@ -47,6 +56,8 @@ export default function Dashboard({ profile }: { profile: UserProfile }) {
           activeTab={activeTab} 
           setActiveTab={setActiveTab} 
           role={profile.role} 
+          isCopilotOpen={showCopilot}
+          onToggleCopilot={() => setIsCopilotOpen(!isCopilotOpen)}
         />
       </div>
 
@@ -170,10 +181,10 @@ export default function Dashboard({ profile }: { profile: UserProfile }) {
         </AnimatePresence>
 
         {/* Mobile Copilot Toggle (Floating Button) */}
-        {!isCopilotOpen && (
+        {!showCopilot && (
           <button
             onClick={() => setIsCopilotOpen(true)}
-            className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-black text-white rounded-full shadow-xl flex items-center justify-center z-50 hover:scale-110 active:scale-95 transition-transform"
+            className="fixed bottom-6 right-6 w-14 h-14 bg-black text-white rounded-full shadow-xl flex items-center justify-center z-50 hover:scale-110 active:scale-95 transition-transform"
           >
             <MessageSquare className="w-6 h-6" />
           </button>
@@ -182,7 +193,7 @@ export default function Dashboard({ profile }: { profile: UserProfile }) {
 
       {/* Copilot Sidebar (Desktop) & Overlay (Mobile) */}
       <AnimatePresence>
-        {isCopilotOpen && (
+        {showCopilot && (
           <>
             {/* Mobile Overlay Background */}
             <motion.div
@@ -199,7 +210,7 @@ export default function Dashboard({ profile }: { profile: UserProfile }) {
               exit={{ x: "100%", opacity: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
               className={cn(
-                "fixed inset-y-0 right-0 w-full sm:w-[400px] md:relative md:w-[350px] md:translate-x-0 z-[90] md:z-auto",
+                "fixed inset-y-0 right-0 w-full sm:w-[400px] md:relative md:w-[380px] md:translate-x-0 z-[90] md:z-auto",
                 "bg-white border-l border-neutral-100 shadow-2xl md:shadow-none overflow-hidden flex flex-col"
               )}
             >

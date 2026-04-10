@@ -1,5 +1,5 @@
 import { School, UserRole } from "@/src/types";
-import { LayoutGrid, Users, FolderKanban, Settings, LogOut } from "lucide-react";
+import { LayoutGrid, Users, FolderKanban, Settings, LogOut, MessageSquare } from "lucide-react";
 import { motion } from "motion/react";
 import { auth } from "@/src/lib/firebase";
 import { cn } from "@/src/lib/utils";
@@ -11,9 +11,11 @@ interface SidebarProps {
   setActiveTab: (tab: any) => void;
   role: UserRole;
   onClose?: () => void;
+  isCopilotOpen?: boolean;
+  onToggleCopilot?: () => void;
 }
 
-export default function Sidebar({ school, activeTab, setActiveTab, role, onClose }: SidebarProps) {
+export default function Sidebar({ school, activeTab, setActiveTab, role, onClose, isCopilotOpen, onToggleCopilot }: SidebarProps) {
   const navItems = [
     { id: "overview", label: "Overview", icon: LayoutGrid },
     ...(role === "owner" ? [{ id: "staff", label: "Staff", icon: Users }] : []),
@@ -66,6 +68,23 @@ export default function Sidebar({ school, activeTab, setActiveTab, role, onClose
             )}
           </button>
         ))}
+
+        <div className="mt-4 pt-4 border-t border-neutral-50">
+          <button
+            onClick={onToggleCopilot}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group",
+              isCopilotOpen ? "text-black bg-neutral-50" : "text-neutral-500 hover:text-black hover:bg-neutral-50"
+            )}
+          >
+            <MessageSquare className={cn("w-4 h-4 transition-transform group-hover:scale-110", isCopilotOpen ? "text-black" : "text-neutral-400 group-hover:text-black")} />
+            AI Copilot
+            <div className={cn(
+              "ml-auto w-2 h-2 rounded-full",
+              isCopilotOpen ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" : "bg-neutral-200"
+            )} />
+          </button>
+        </div>
       </nav>
 
       <div className="p-4 border-t border-neutral-50">
